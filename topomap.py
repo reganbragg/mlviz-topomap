@@ -1,38 +1,44 @@
+import random
 from mlpack import emst
 import numpy as np
 import math
 from scipy.spatial import ConvexHull
+from matplotlib import pyplot as plt
 
 
 # Get the angle between two points
 def get_angle(p1, p2):
     delta_y = p2[1] - p1[1]
     delta_x = p2[0] - p1[0]
-    theta = -1*math.atan2(delta_y, delta_x)
+    theta = -1 * math.atan2(delta_y, delta_x)
     return theta
 
 
 # Rotate the hull so that the edge corresponding to the first two endpoints is either aligned at the top or bottom
-def rotate_hull(points, vertices, top):
+def rotate_hull(points, vertices, top, method):
+
+    idx = 0
+    if method == 'random':
+        idx = random.randint(1, vertices.shape[0]-1)-1
 
     # Get the angle to rotate by
     if top:
-        theta = get_angle(points[vertices[0]], points[vertices[1]])
+        theta = get_angle(points[vertices[idx]], points[vertices[idx+1]])
     else:
-        theta = get_angle(points[vertices[0]], points[vertices[1]]) + math.pi
+        theta = get_angle(points[vertices[idx]], points[vertices[idx+1]]) + math.pi
 
-    center_index = vertices[0]
+    center_index = vertices[idx]
     center = points[center_index]
     points_rotated = np.empty((0, 2))
 
-    # For all the points, rotate them around the first point
+    # For all the points, rotate them around the selected point
     for i in range(points.shape[0]):
         # Translate the point to the origin and rotate
-        if i != vertices[0]:
+        if i != vertices[idx]:
             y = points[i][1] - center[1]
             x = points[i][0] - center[0]
-            y_prime = x*math.sin(theta) + y*math.cos(theta) + center[1]
-            x_prime = x*math.cos(theta) - y*math.sin(theta) + center[0]
+            y_prime = x * math.sin(theta) + y * math.cos(theta) + center[1]
+            x_prime = x * math.cos(theta) - y * math.sin(theta) + center[0]
             points_rotated = np.vstack((points_rotated, np.array([x_prime, y_prime])))
         else:
             points_rotated = np.vstack((points_rotated, center))
@@ -44,15 +50,25 @@ def rotate_hull(points, vertices, top):
 
 class TopoMap:
 
-    def __init__(self, points):
-        self.points = points
+    def __init__(self, method='default'):
+        self.points = None
+        self.target = None
         self.r2_points = None
+        if method == 'default' or method == 'random':
+            self.method = method
 
+    def get_params(self):
+        return {'method': self.method}
+
+    def set_params(self, method='default'):
+        if method == 'default' or method == 'random':
+            self.method = method
+
+    # Emst: matrix where each row represents an edge in the Emst
+    # First dimension is lesser index, second dimension is higher index
+    # Third dimension is the edge length
     def compute_EMST(self):
-        Emst = emst(input=self.points, naive=False)
-        # Emst: matrix where each row represents an edge in the Emst
-        # First dimension is lesser index, second dimension is higher index
-        # Third dimension is the edge length
+        Emst = emst(input=self.points, naive=False, leaf_size=1)
         out = Emst['output']
         vertices = out[:, 0:2]
         edges = out[:, 2]
@@ -88,12 +104,12 @@ class TopoMap:
                 rotated_points = np.array([[0, d]])
 
             elif points_a.shape[0] == 2:
-                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=True)
+                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=False, method=self.method)
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             else:
                 hull = ConvexHull(points_a)
-                rotated_points = rotate_hull(points_a, hull.vertices, top=True)
+                rotated_points = rotate_hull(points_a, hull.vertices, top=False, method=self.method)
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             for k in range(comps[comp_a].shape[0]):
@@ -104,11 +120,11 @@ class TopoMap:
                 rotated_points = np.array([[0, 0]])
 
             elif points_b.shape[0] == 2:
-                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=False)
+                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=True, method=self.method)
 
             else:
                 hull = ConvexHull(points_b)
-                rotated_points = rotate_hull(points_b, hull.vertices, top=False)
+                rotated_points = rotate_hull(points_b, hull.vertices, top=True, method=self.method)
 
             for k in range(comps[comp_b].shape[0]):
                 points_prime[comps[comp_b][k]] = rotated_points[k]
@@ -120,11 +136,25 @@ class TopoMap:
 
         self.r2_points = points_prime
 
-    def algo(self):
+    def fit(self, X, y=None):
+        self.points = X
+        self.target = y
+
         v, e = self.compute_EMST()
         self.place_points(v, e)
 
+    def fit_transform(self, X, y=None):
+        self.points = X
+        self.target = y
 
-data = np.array([[1, 2, 3], [6, 2, 6], [3, 7, 12], [8, 10, 1], [-4, 5, -2]])
-t = TopoMap(data)
-t.algo()
+        v, e = self.compute_EMST()
+        self.place_points(v, e)
+        return self.r2_points
+
+    def plot(self):
+        x, y = self.r2_points[:, 0], self.r2_points[:, 1]
+        if self.target is not None:
+            plt.scatter(x=x, y=y, c=self.target)
+        else:
+            plt.scatter(x=x, y=y)
+        plt.show()
