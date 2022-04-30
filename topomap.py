@@ -2,6 +2,7 @@ import random
 from mlpack import emst
 import numpy as np
 import math
+import sys
 from scipy.spatial import ConvexHull
 from matplotlib import pyplot as plt
 
@@ -15,17 +16,24 @@ def get_angle(p1, p2):
 
 
 # Rotate the hull so that the edge corresponding to the first two endpoints is either aligned at the top or bottom
-def rotate_hull(points, vertices, top, method):
+def rotate_hull(points, vertices, top, method, edge_point):
 
     idx = 0
+    length = vertices.shape[0]
+
     if method == 'random':
-        idx = random.randint(1, vertices.shape[0]-1)-1
+        idx = random.randint(1, vertices.shape[0]-1)
+
+    if method == "default":
+        vertex_points = points[vertices]
+        dists = np.linalg.norm(vertex_points - edge_point, axis=1)
+        idx = np.where(dists == np.amin(dists))[0][0]
 
     # Get the angle to rotate by
     if top:
-        theta = get_angle(points[vertices[idx]], points[vertices[idx+1]])
+        theta = get_angle(points[vertices[idx]], points[vertices[(idx + 1) % length]])
     else:
-        theta = get_angle(points[vertices[idx]], points[vertices[idx+1]]) + math.pi
+        theta = get_angle(points[vertices[idx]], points[vertices[(idx + 1) % length]]) + math.pi
 
     center_index = vertices[idx]
     center = points[center_index]
@@ -54,14 +62,17 @@ class TopoMap:
         self.points = None
         self.target = None
         self.r2_points = None
-        if method == 'default' or method == 'random':
+        self.method = 'default'
+        methods = ['random', 'first']
+        if method in methods:
             self.method = method
 
     def get_params(self):
         return {'method': self.method}
 
     def set_params(self, method='default'):
-        if method == 'default' or method == 'random':
+        methods = ['default', 'random', 'first']
+        if method in methods:
             self.method = method
 
     # Emst: matrix where each row represents an edge in the Emst
@@ -104,12 +115,12 @@ class TopoMap:
                 rotated_points = np.array([[0, d]])
 
             elif points_a.shape[0] == 2:
-                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=False, method=self.method)
+                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=False, method=self.method, edge_point=points_prime[int(pair[0])])
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             else:
                 hull = ConvexHull(points_a)
-                rotated_points = rotate_hull(points_a, hull.vertices, top=False, method=self.method)
+                rotated_points = rotate_hull(points_a, hull.vertices, top=False, method=self.method, edge_point=points_prime[int(pair[0])])
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             for k in range(comps[comp_a].shape[0]):
@@ -120,11 +131,11 @@ class TopoMap:
                 rotated_points = np.array([[0, 0]])
 
             elif points_b.shape[0] == 2:
-                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=True, method=self.method)
+                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=True, method=self.method, edge_point=points_prime[int(pair[1])])
 
             else:
                 hull = ConvexHull(points_b)
-                rotated_points = rotate_hull(points_b, hull.vertices, top=True, method=self.method)
+                rotated_points = rotate_hull(points_b, hull.vertices, top=True, method=self.method, edge_point=points_prime[int(pair[1])])
 
             for k in range(comps[comp_b].shape[0]):
                 points_prime[comps[comp_b][k]] = rotated_points[k]
@@ -153,6 +164,14 @@ class TopoMap:
 
     def plot(self):
         x, y = self.r2_points[:, 0], self.r2_points[:, 1]
+        if self.target is not None:
+            plt.scatter(x=x, y=y, c=self.target)
+        else:
+            plt.scatter(x=x, y=y)
+        plt.show()
+
+    def plot_data(self):
+        x, y = self.points[:, 0], self.points[:, 1]
         if self.target is not None:
             plt.scatter(x=x, y=y, c=self.target)
         else:
