@@ -2,9 +2,10 @@ import random
 from mlpack import emst
 import numpy as np
 import math
-import sys
 from scipy.spatial import ConvexHull
 from matplotlib import pyplot as plt
+import ripser
+import persim
 
 
 # Get the angle between two points
@@ -93,9 +94,9 @@ class TopoMap:
         comps = [np.array([i]) for i in range(n)]
         points_prime = np.zeros((n, 2))
 
-        for i in range(n - 1):
+        for i in range(n-1):
             pair = vertices[i]  # Pair is the pair of endpoints of the i-th smallest edge
-            d = edges[i]  # d is the smallest edge
+            d = edges[i]  # d is the length of the smallest edge
 
             # Get component A and component B containing point A and point B
             comp_a = 0
@@ -109,6 +110,7 @@ class TopoMap:
             # Get the points in component a and b
             points_a = np.array([points_prime[x] for x in comps[comp_a]])
             points_b = np.array([points_prime[x] for x in comps[comp_b]])
+            print(points_a, "\n", points_b, "\n ------------------")
 
             # Align component a with left edge point at (0, d)
             if points_a.shape[0] == 1:
@@ -177,3 +179,10 @@ class TopoMap:
         else:
             plt.scatter(x=x, y=y)
         plt.show()
+
+    def plot_persistence(self):
+        dgm_original = ripser.ripser(self.points)['dgms'][0]
+        dgm_after_topomap = ripser.ripser(self.r2_points)['dgms'][0]
+        distance_bottleneck, matching = persim.bottleneck(dgm_original, dgm_after_topomap, matching=True)
+        print(distance_bottleneck)
+        # rips.plot(diagrams, show=True)
