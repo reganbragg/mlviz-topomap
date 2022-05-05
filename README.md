@@ -48,13 +48,3 @@ Produces a 2D plot of the transformed points.
 | Parameters  | None |
 | :---        | :---        |
 | **Returns** | ***Plot: matplotlib scatterplot of transformed points*** |
-
-
-```plot_persistence(tranformed=True)```
-
-Produces a persistence plot for the homology of the original or transformed points.
-
-| Parameters  | transformed: *boolean*. Indicate *False* for a persistence plot of the original points, otherwise form a persistence plot for the transformed points.|
-| :---        | :---        |
-| **Returns** | ***Plot: matplotlib persistence diagram*** |
-

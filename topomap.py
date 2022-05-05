@@ -4,8 +4,31 @@ import numpy as np
 import math
 from scipy.spatial import ConvexHull
 from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import ripser
 import persim
+
+
+def get_closest_edge(hull_points, point):
+    length = hull_points.shape[0]
+    min_dist = float("inf")
+    for i in range(hull_points.shape[0]):
+        p1 = hull_points[i]
+        p2 = hull_points[(i+1) % length]
+        p = p2-p1
+        norm = np.sum(np.square(p))
+        u = np.dot(np.subtract(point, p1), p)/norm
+        if u > 1:
+            u = 1
+        elif u < 0:
+            u = 0
+        xy = np.add(p1, u*p)
+        dxy = np.subtract(xy, point)
+        dist = np.sqrt(np.sum(np.square(dxy)))
+        if dist < min_dist:
+            index = i
+            min_dist = dist
+    return index
 
 
 # Get the angle between two points
@@ -18,23 +41,23 @@ def get_angle(p1, p2):
 
 # Rotate the hull so that the edge corresponding to the first two endpoints is either aligned at the top or bottom
 def rotate_hull(points, vertices, top, method, edge_point):
-
     idx = 0
     length = vertices.shape[0]
 
-    if method == 'random':
-        idx = random.randint(1, vertices.shape[0]-1)
+    if method == 'random' and length > 2:
+        idx = random.randint(1, vertices.shape[0] - 1)
 
-    if method == "default":
+    if method == "default" and length > 2:
         vertex_points = points[vertices]
-        dists = np.linalg.norm(vertex_points - edge_point, axis=1)
-        idx = np.where(dists == np.amin(dists))[0][0]
+        # dists = np.linalg.norm(vertex_points - edge_point, axis=1)
+        # idx = np.where(dists == np.amin(dists))[0][0]
+        idx = get_closest_edge(vertex_points, edge_point)
 
     # Get the angle to rotate by
     if top:
         theta = get_angle(points[vertices[idx]], points[vertices[(idx + 1) % length]])
     else:
-        theta = get_angle(points[vertices[idx]], points[vertices[(idx + 1) % length]]) + math.pi
+        theta = get_angle(points[vertices[idx]], points[vertices[(idx - 1) % length]]) + math.pi
 
     center_index = vertices[idx]
     center = points[center_index]
@@ -94,7 +117,7 @@ class TopoMap:
         comps = [np.array([i]) for i in range(n)]
         points_prime = np.zeros((n, 2))
 
-        for i in range(n-1):
+        for i in range(n - 1):
             pair = vertices[i]  # Pair is the pair of endpoints of the i-th smallest edge
             d = edges[i]  # d is the length of the smallest edge
 
@@ -110,19 +133,22 @@ class TopoMap:
             # Get the points in component a and b
             points_a = np.array([points_prime[x] for x in comps[comp_a]])
             points_b = np.array([points_prime[x] for x in comps[comp_b]])
-            print(points_a, "\n", points_b, "\n ------------------")
+            # print("A:", points_a.shape[0], "B:", points_b.shape[0])
+            # print(points_a, "\n\n", points_b, "\n ------------------")
 
             # Align component a with left edge point at (0, d)
             if points_a.shape[0] == 1:
                 rotated_points = np.array([[0, d]])
 
             elif points_a.shape[0] == 2:
-                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=False, method=self.method, edge_point=points_prime[int(pair[0])])
+                rotated_points = rotate_hull(points_a, np.array([0, 1]), top=False, method=self.method,
+                                             edge_point=points_prime[int(pair[0])])
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             else:
                 hull = ConvexHull(points_a)
-                rotated_points = rotate_hull(points_a, hull.vertices, top=False, method=self.method, edge_point=points_prime[int(pair[0])])
+                rotated_points = rotate_hull(points_a, hull.vertices, top=False, method=self.method,
+                                             edge_point=points_prime[int(pair[0])])
                 rotated_points = np.add(rotated_points, np.array([0, d]))
 
             for k in range(comps[comp_a].shape[0]):
@@ -133,11 +159,13 @@ class TopoMap:
                 rotated_points = np.array([[0, 0]])
 
             elif points_b.shape[0] == 2:
-                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=True, method=self.method, edge_point=points_prime[int(pair[1])])
+                rotated_points = rotate_hull(points_b, np.array([0, 1]), top=True, method=self.method,
+                                             edge_point=points_prime[int(pair[1])])
 
             else:
                 hull = ConvexHull(points_b)
-                rotated_points = rotate_hull(points_b, hull.vertices, top=True, method=self.method, edge_point=points_prime[int(pair[1])])
+                rotated_points = rotate_hull(points_b, hull.vertices, top=True, method=self.method,
+                                             edge_point=points_prime[int(pair[1])])
 
             for k in range(comps[comp_b].shape[0]):
                 points_prime[comps[comp_b][k]] = rotated_points[k]
@@ -147,6 +175,7 @@ class TopoMap:
             comps[comp_a] = comp_merged
             comps.pop(comp_b)
 
+        # print("Final component:\n", points_prime)
         self.r2_points = points_prime
 
     def fit(self, X, y=None):
@@ -174,10 +203,20 @@ class TopoMap:
 
     def plot_data(self):
         x, y = self.points[:, 0], self.points[:, 1]
-        if self.target is not None:
-            plt.scatter(x=x, y=y, c=self.target)
+        if self.target is not None and self.points.shape[1] == 3:
+            z = self.points[:, 2]
+            fig = plt.figure(figsize=(4,4))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(x, y, z, c=self.target)
+        elif self.points.shape[1] == 3:
+            z = self.points[:, 2]
+            fig = plt.figure(figsize=(4, 4))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(x, y, z)
+        elif self.target is not None:
+            plt.scatter(x, y, c=self.target)
         else:
-            plt.scatter(x=x, y=y)
+            plt.scatter(x, y)
         plt.show()
 
     def plot_persistence(self):

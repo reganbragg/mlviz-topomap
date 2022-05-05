@@ -15,20 +15,20 @@ def get_data(dataset="classification"):
         X = data.drop('target', axis=1).to_numpy()
         y = data['target'].to_numpy()
     elif dataset == "moons":
-        X, y = make_moons(n_samples=1000)
+        X, y = make_moons(n_samples=1000, random_state=1234)
     elif dataset == "swissroll":
-        X, y = make_swiss_roll(n_samples=1000)
+        X, y = make_swiss_roll(n_samples=1000, random_state=1234)
     elif dataset == "s_curve":
-        X, y = make_s_curve(n_samples=1000)
+        X, y = make_s_curve(n_samples=1000, random_state=1233)
     elif dataset == "circles":
-        X, y = make_circles(n_samples=1000)
+        X, y = make_circles(n_samples=1000, random_state=1234)
     elif dataset == "blobs":
-        X, y = make_blobs(n_samples=1000)
+        X, y = make_blobs(n_samples=1000, random_state=1206)
     elif dataset == "small":
-        X, y = make_classification(n_samples=4, n_features=3, n_informative=3, n_redundant=0, n_classes=2)
+        X, y = make_classification(n_samples=6, n_features=3, n_informative=3, n_redundant=0, n_classes=2, random_state=1234)
     else:
         X, y = make_classification(n_samples=1000, n_features=10, class_sep=5, n_informative=5, n_classes=3,
-                                   n_clusters_per_class=1, flip_y=0.00)
+                                   n_clusters_per_class=1, flip_y=0.00, random_state=1234)
     return X, y
 
 
@@ -42,7 +42,7 @@ def test(dataset="classification", method="default"):
     print("method used:", t.get_params()['method'])
     t.plot_data()
     t.plot()
-    t.plot_persistence()
+    # t.plot_persistence()
 
 
 if __name__ == '__main__':
