@@ -2,7 +2,7 @@ import sys
 import pandas as pd
 import numpy as np
 from sklearn.datasets import load_iris, make_classification, make_moons, make_swiss_roll, make_s_curve, make_circles, \
-    make_blobs
+    make_blobs, load_breast_cancer, load_wine, load_digits
 from topomap import TopoMap
 import time
 
@@ -14,6 +14,15 @@ def get_data(dataset="classification"):
         data.drop_duplicates(inplace=True)
         X = data.drop('target', axis=1).to_numpy()
         y = data['target'].to_numpy()
+    elif dataset == "cancer":
+        cancer = load_breast_cancer()
+        X, y = cancer['data'], cancer['target']
+    elif dataset == "wine":
+        wine = load_wine()
+        X, y = wine['data'], wine['target']
+    elif dataset == "digits":
+        digits = load_digits()
+        X, y = digits['data'], digits['target']
     elif dataset == "moons":
         X, y = make_moons(n_samples=1000, random_state=1234)
     elif dataset == "swissroll":
@@ -42,7 +51,6 @@ def test(dataset="classification", method="default"):
     print("method used:", t.get_params()['method'])
     t.plot_data()
     t.plot()
-    # t.plot_persistence()
 
 
 if __name__ == '__main__':

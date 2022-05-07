@@ -133,8 +133,6 @@ class TopoMap:
             # Get the points in component a and b
             points_a = np.array([points_prime[x] for x in comps[comp_a]])
             points_b = np.array([points_prime[x] for x in comps[comp_b]])
-            # print("A:", points_a.shape[0], "B:", points_b.shape[0])
-            # print(points_a, "\n\n", points_b, "\n ------------------")
 
             # Align component a with left edge point at (0, d)
             if points_a.shape[0] == 1:
@@ -179,7 +177,7 @@ class TopoMap:
         self.r2_points = points_prime
 
     def fit(self, X, y=None):
-        self.points = X
+        self.points = X/np.linalg.norm(X)
         self.target = y
 
         v, e = self.compute_EMST()
@@ -196,9 +194,9 @@ class TopoMap:
     def plot(self):
         x, y = self.r2_points[:, 0], self.r2_points[:, 1]
         if self.target is not None:
-            plt.scatter(x=x, y=y, c=self.target)
+            plt.scatter(x=x, y=y, c=self.target, s=20)
         else:
-            plt.scatter(x=x, y=y)
+            plt.scatter(x=x, y=y, s=20)
         plt.show()
 
     def plot_data(self):
@@ -214,14 +212,14 @@ class TopoMap:
             ax = fig.add_subplot(111, projection='3d')
             ax.scatter(x, y, z)
         elif self.target is not None:
-            plt.scatter(x, y, c=self.target)
+            plt.scatter(x, y, c=self.target, s=20)
         else:
-            plt.scatter(x, y)
+            plt.scatter(x, y, s=20)
         plt.show()
 
-    def plot_persistence(self):
-        dgm_original = ripser.ripser(self.points)['dgms'][0]
-        dgm_after_topomap = ripser.ripser(self.r2_points)['dgms'][0]
-        distance_bottleneck, matching = persim.bottleneck(dgm_original, dgm_after_topomap, matching=True)
-        print(distance_bottleneck)
+    # def plot_persistence(self):
+    #     dgm_original = ripser.ripser(self.points)['dgms'][0]
+    #     dgm_after_topomap = ripser.ripser(self.r2_points)['dgms'][0]
+    #     distance_bottleneck, matching = persim.bottleneck(dgm_original, dgm_after_topomap, matching=True)
+    #     print(distance_bottleneck)
         # rips.plot(diagrams, show=True)
