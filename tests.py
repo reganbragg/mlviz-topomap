@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import load_iris, make_classification, make_moons, make_swiss_roll, make_s_curve, make_circles, \
     make_blobs, load_breast_cancer, load_wine, load_digits
+from mvlearn.datasets import load_UCImultifeature
 from topomap import TopoMap
 import time
 
@@ -23,6 +24,11 @@ def get_data(dataset="classification"):
     elif dataset == "digits":
         digits = load_digits()
         X, y = digits['data'], digits['target']
+    elif dataset == "mfeat":
+        X, y = load_UCImultifeature()
+        X = X[2]
+        X, indices = np.unique(X, axis=0, return_index=True)
+        y = y[indices]
     elif dataset == "moons":
         X, y = make_moons(n_samples=1000, random_state=1234)
     elif dataset == "swissroll":
