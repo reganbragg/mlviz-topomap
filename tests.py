@@ -1,3 +1,4 @@
+import os
 import sys
 import pandas as pd
 import numpy as np
@@ -60,6 +61,7 @@ def test(dataset="classification", method="default"):
 
 
 if __name__ == '__main__':
+    print(os.getcwd())
     arguments = sys.argv[1:]
     if len(arguments) == 0:
         test()
